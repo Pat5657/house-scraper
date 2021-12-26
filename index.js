@@ -1,46 +1,45 @@
-const puppeteer = require('puppeteer')
+let openRentScraper = require('./scrapers/openRentScraper')
 
-const targetUrl = 'https://www.openrent.co.uk/properties-to-rent/wembley-greater-london?term=Wembley,%20Greater%20London&prices_max=2700&bedrooms_min=3&bedrooms_max=4&hasParking=true'
+// Define scrape targets
+const targets = [
+    {
+        site: 'openrent',
+        url: 'https://www.openrent.co.uk/properties-to-rent/wembley-greater-london?term=Wembley,%20Greater%20London&prices_max=2700&bedrooms_min=3&bedrooms_max=4&hasParking=true'
+    }
+]
 
-async function run() {
-    // load page
-    const browser = await puppeteer.launch()
-    const page = await browser.newPage()
-    await page.goto(targetUrl)
+// define main function
+let run = async () => {
+    console.log('~~~~~~ Hunt begins ~~~~~~')
     
-    // parse the listings from the page
-    const listings = await page.evaluate(() => {
-        // get listings parent element
-        let propertyData = document.getElementById('property-data')
-        // get listing elements
-        let children = propertyData.querySelectorAll('a.pli:not(.l-a)')
+    let results = []
 
-        // define base result
-        let results = []
+    // loop through each target
+    for (let target  of targets) {
+        let listings = []
 
-        // parse each listing to the results
-        results = Object.values(children).map(c => {
-            // get price (p/month)
-            let price = c.querySelector('div.pim').innerText.split(' ')[0]
-            // get listing name
-            let name = c.querySelector('span.listing-title').innerText
+        // identify the scraper to use
+        switch(target.site) {
+            case 'openrent':
+                listings = await openRentScraper(target.url)
+                break;
+            default:
+                // invalid site
+                console.log('Invalid target site:', target.site)
+        }
 
-            // return listing info
-            return {
-                name,
-                price,
-                link: c.href
-            }
+        // append results
+        results.push({
+            site: target.site,
+            listings
         })
-
-        // return parsed listings
-        return results
-    })
+    }
     
-    console.log('Listings:', listings);
+    console.log('Findings', results)
 
-    // close the browser
-    await browser.close();
+    console.log('~~~~~~ Finished ~~~~~~')
 }
 
-run()
+(async () => {
+    await run()
+})();
